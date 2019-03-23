@@ -4,19 +4,34 @@ Atomiix {
 
   var instruments, audioEngine;
 
-  init {| configPath, project, oscInPort, oscOutPort, oscOutHost = "127.0.0.1" |
+  *setup {| oscPort, oscDestination |
+    "Waiting for startup message".postln;
+
+    OSCFunc({| msg |
+      var projectPath = msg[1];
+      if (~atomiix.notNil, { ~atomiix.free; });
+      "Project path is %".format(projectPath).postln;
+      ~atomiix = Atomiix.new.init(projectPath, oscPort, oscDestination);
+    }, '/setup', NetAddr("localhost"), oscPort);
+  }
+
+  init {| projectPath, oscInPort, oscOutPort, oscOutHost = "127.0.0.1" |
     var outPort;
     "Booting Atomiix...".postln;
 
     outPort = NetAddr.new(oscOutHost, oscOutPort);
 
-    instruments = AtomiixInstruments.new.init(configPath, project);
+    instruments = AtomiixInstruments.new.init(projectPath);
     audioEngine = AtomiixAudio.new.init(
       instruments.makeInstrDict,
       instruments.makeEffectDict,
       outPort
     );
     this.setupOSC(oscInPort);
+  }
+
+  cleanup {
+    "Cleanup not yet implemented!".postln;
   }
 
   setupOSC {| oscPort |

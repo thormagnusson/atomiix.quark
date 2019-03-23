@@ -3,13 +3,12 @@
 
 AtomiixInstruments {
 
-  var configFolder, project;
+  var projectPath;
   var sampleNames;
   var bufferPool;
 
-  init {| configPath, projectName |
-    configFolder = configPath;
-    project = projectName;
+  init {| path |
+    projectPath = path;
     this.loadProjectSynthDefs();
     this.loadSampleSynthDefs();
     this.makeSynthDefs();
@@ -24,7 +23,7 @@ AtomiixInstruments {
 
     // if sounds folder contains a key mapping file, then it is used, else,
     // the instrDict is created by mapping random sound files onto the letters
-    keyMapPath = configFolder++project++"/keyMapping.ixi";
+    keyMapPath = projectPath++"/keyMapping.ixi";
 
     if(Object.readArchive(keyMapPath).isNil, {
       instrDict = IdentityDictionary.new;
@@ -80,7 +79,7 @@ AtomiixInstruments {
 
   loadProjectSynthDefs {
     // instead of loadPath
-    (configFolder++project++"/synthdefs.scd").load;
+    (projectPath++"/synthdefs.scd").load;
   }
 
   loadSampleSynthDefs {
@@ -91,7 +90,7 @@ AtomiixInstruments {
     "Loading samples".postln;
 
     // ---------------------- sample based instruments ---------------------
-    sampleFolder = (configFolder++project++"/samples/*");
+    sampleFolder = (projectPath++"/samples/*");
     samplePaths = sampleFolder.pathMatch;
     sampleNames = samplePaths.collect({ |path| path.basename.splitext[0]});
 
