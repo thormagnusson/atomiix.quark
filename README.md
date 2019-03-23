@@ -3,6 +3,13 @@
 The SuperCollider audio engine for Atomiix
 
 
+# Installing
+
+Should be simple to install as this is built as a SuperCollider [Quart](http://doc.sccode.org/Guides/UsingQuarks.html).
+
+`Quarks.install("https://github.com/rumblesan/atomiix.quark.git");`
+
+
 ## OSC Messages
 
 The engine is controlled by OSC messages sent from the Atom editor.
