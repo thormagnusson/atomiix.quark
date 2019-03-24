@@ -14,7 +14,7 @@ AtomiixInstruments {
     this.makeSynthDefs();
   }
 
-	freeBuffers {
+	free {
 		bufferPool.do({arg buffer; buffer.free;});
 	}
 
