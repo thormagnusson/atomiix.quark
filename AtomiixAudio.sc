@@ -90,6 +90,36 @@ AtomiixAudio {
     });
   }
 
+  napAgent{| agentName, args |
+    var time = args[0];
+    var timeType = args[1];
+    var repeats = args[2];
+    var napDuration = if(timeType == \beats, {
+      time * TempoClock.default.tempo;
+    }, {
+      time;
+    });
+    [agentName, time, timeType, repeats, napDuration].postln;
+    this.actionAgent(agentName, {| agentName, agent |
+      if (agentDict[agentName][1].playstate, {
+        {
+          (repeats * 2).do({| num |
+            if (agentDict[agentName][1].playstate, {
+              proxyspace[agentName].objects[0].array[0].mute;
+              agentDict[agentName][1].playstate = false;
+            }, {
+              proxyspace[agentName].objects[0].array[0].unmute;
+              agentDict[agentName][1].playstate = true;
+            });
+            napDuration.wait;
+          });
+        }.fork(TempoClock.new)
+      }, {
+        "Agent % is already sleeping\n".format(agentName).postln;
+      });
+    });
+  }
+
   reinitScore {| agentName |
     this.actionAgent(agentName, {| agentName, agent |
       var scoreType = agent[1].mode;
@@ -261,6 +291,7 @@ AtomiixAudio {
         });
       });
     });
+    agent[1].playstate = true;
     ^pdef;
   }
 

@@ -57,10 +57,14 @@ Atomiix {
     listenerPool = listenerPool.add(
       OSCFunc({| msg |
         var command = msg[1];
+        var agentName = msg[2];
         switch (command,
-          \free, {audioEngine.freeAgent(msg[2])},
-          \doze, {audioEngine.dozeAgent(msg[2])},
-          \wake, {audioEngine.wakeAgent(msg[2])}
+          \free, {audioEngine.freeAgent(agentName)},
+          \doze, {audioEngine.dozeAgent(agentName)},
+          \wake, {audioEngine.wakeAgent(agentName)},
+          \nap, {
+            audioEngine.napAgent(agentName, msg[3..])
+          }
         )
       }, '/command', NetAddr("localhost"), oscPort)
     );
