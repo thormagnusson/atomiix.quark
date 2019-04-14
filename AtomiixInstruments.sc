@@ -19,14 +19,19 @@ AtomiixInstruments {
 	}
 
   makeInstrDict{
-    var instrDict, keyMapPath;
+    var instrDict, mapping, keyMapPath;
 
     // if sounds folder contains a key mapping file, then it is used, else,
     // the instrDict is created by mapping random sound files onto the letters
-    keyMapPath = projectPath++"/keyMapping.ixi";
+    keyMapPath = projectPath++"/keyMapping.yaml";
 
-    if(Object.readArchive(keyMapPath).isNil, {
-      instrDict = IdentityDictionary.new;
+    instrDict = IdentityDictionary.new;
+    if(File.exists(keyMapPath), {
+      mapping = File.readAllString(keyMapPath, "r").parseYAML;
+      mapping.keysDo({arg key;
+        instrDict[key[0].asSymbol] = mapping[key].asSymbol;
+      });
+    }, {
       [\A, \a, \B, \b, \C, \c, \D, \d, \E, \e, \F, \f, \G, \g, \H, \h, \I, \i,
        \J, \j, \K, \k, \L, \l, \M, \m, \N, \n, \O, \o, \P, \p, \Q, \q, \R, \r,
        \S, \s, \T, \t, \U, \u, \V, \v, \W, \w, \X, \x, \Y, \y, \Z, \z
@@ -34,8 +39,6 @@ AtomiixInstruments {
         instrDict[letter] = sampleNames.wrapAt(i).asSymbol;
       });
       "No key mappings were found, so samples will be randomly assigned to keys".postln;
-    }, {
-      instrDict = Object.readArchive(keyMapPath);
     });
 
     "The keys of your keyboard are mapped to the following samples :".postln;
