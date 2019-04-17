@@ -71,6 +71,7 @@ AtomiixAudio {
       agentDict[agentName][1].playstate = false;
       proxyspace[agentName].clear;
       agentDict[agentName] = nil;
+      oscOutPort.sendMsg("/agent/state", agentName, "stopped");
     });
   }
 
@@ -79,6 +80,7 @@ AtomiixAudio {
       "Dozing agent: %\n".format(name).postln;
       agentDict[name][1].playstate = false;
       proxyspace[name].stop;
+      oscOutPort.sendMsg("/agent/state", agentName, "sleeping");
     });
   }
 
@@ -87,6 +89,7 @@ AtomiixAudio {
       "Waking agent: %\n".format(agentName).postln;
       agentDict[agentName][1].playstate = true;
       proxyspace[agentName].play;
+      oscOutPort.sendMsg("/agent/state", agentName, "playing");
     });
   }
 
@@ -107,9 +110,11 @@ AtomiixAudio {
             if (agentDict[agentName][1].playstate, {
               proxyspace[agentName].objects[0].array[0].mute;
               agentDict[agentName][1].playstate = false;
+              oscOutPort.sendMsg("/agent/state", agentName, "sleeping");
             }, {
               proxyspace[agentName].objects[0].array[0].unmute;
               agentDict[agentName][1].playstate = true;
+              oscOutPort.sendMsg("/agent/state", agentName, "playing");
             });
             napDuration.wait;
           });
@@ -292,6 +297,7 @@ AtomiixAudio {
       });
     });
     agent[1].playstate = true;
+    oscOutPort.sendMsg("/agent/state", agentName, "playing");
     ^pdef;
   }
 
@@ -381,6 +387,7 @@ AtomiixAudio {
       });
     });
     agent[1].playstate = true;
+    oscOutPort.sendMsg("/agent/state", agentName, "playing");
     ^pdef
   }
 
@@ -457,6 +464,7 @@ AtomiixAudio {
     // proxyspace quirk: amp set from outside
     Pdef(agentName).set(\amp, agent[1].amp);
     agent[1].playstate = true;
+    oscOutPort.sendMsg("/agent/state", agentName, "playing");
     ^pdef;
   }
 
