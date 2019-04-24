@@ -17,6 +17,11 @@ The engine is controlled by OSC messages sent from the Atom editor.
 The full details can be found in the [osc-messages.md](./docs/osc-messages.md) document.
 
 
+## Issues
+
+For any issues, raise them on the main [Atomiix](https://github.com/rumblesan/atomiix/issues) repository.
+
+
 ## Contact
 
 Drop me an email at guy@rumblesan.com
