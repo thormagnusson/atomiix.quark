@@ -7,11 +7,13 @@
 
   unfoldOSCArrays {
     var stack, current, prev;
+    stack = [];
+    current = [];
 
     this.do { |item|
       if(item === $[ /*]*/) {
-        current !? { stack = stack.add(current) };
-        current = nil;
+        stack = stack.add(current);
+        current = [];
       } {
         if(item === /*[*/ $]) {
           prev = stack.pop;
