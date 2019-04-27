@@ -125,18 +125,6 @@ AtomiixAudio {
     });
   }
 
-  reinitScore {| agentName |
-    this.actionAgent(agentName, {| agentName, agent |
-      var scoreType = agent[1].mode;
-      switch (scoreType,
-        \percussive, { this.playPercussiveScore(agentName, agent[1]) },
-        \melodic, { this.playMelodicScore(agentName, agent[1]) },
-        \concrete, { this.playConcreteScore(agentName, agent[1]) },
-        { "unknown score type: %\n".format(scoreType).postln }
-      )
-    });
-  }
-
   setAgentAmplitude{| agentName, amplitude |
     this.actionAgent(agentName, {| agentName, agent |
       agent[1].amp = amplitude.clip(0, 2);
