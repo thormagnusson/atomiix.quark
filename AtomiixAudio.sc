@@ -235,6 +235,12 @@ AtomiixAudio {
     agent[1].quantphase = scoreInfo.quantphase;
     agent[1].repeats = scoreInfo.repeats;
 
+    // if the agent has an empty score then return before creating the pdefs
+    if (agent[1].durations[0].isNil, {
+      "agent has no score so not running".postln;
+      ^agent
+    });
+
     durationSequence = this.createFinishingSeq(agentName, scoreInfo.durations, scoreInfo.repeats);
     attackSequence = this.createAttackSeq(agent, scoreInfo.attackArray);
 
@@ -319,6 +325,12 @@ AtomiixAudio {
     agent[1].panArray = scoreInfo.panArray;
     agent[1].quantphase = scoreInfo.quantphase;
     agent[1].repeats = scoreInfo.repeats;
+
+    // if the agent has an empty score then return before creating the pdefs
+    if (agent[1].durations[0].isNil, {
+      "agent has no score so not running".postln;
+      ^agent
+    });
 
     durationSequence = this.createFinishingSeq(agentName, scoreInfo.durations, scoreInfo.repeats);
     attackSequence = this.createAttackSeq(agent, scoreInfo.attackArray);
@@ -410,6 +422,12 @@ AtomiixAudio {
     agent[1].panArray = scoreInfo.panArray;
     agent[1].quantphase = scoreInfo.quantphase;
     agent[1].repeats = scoreInfo.repeats;
+
+    // if the agent has an empty score then return before creating the pdefs
+    if (agent[1].durations[0].isNil, {
+      "agent has no score so not running".postln;
+      ^agent
+    });
 
     durationSequence = this.createFinishingSeq(agentName, scoreInfo.durations, scoreInfo.repeats);
 
