@@ -31,7 +31,7 @@ AtomiixAudio {
     if (agentDict[agentName].notNil, {
       action.value(agentName, agentDict[agentName]);
     }, {
-      "No agent named %\n".format(agentName).postln;
+      "No agent named %".format(agentName).postln;
     });
   }
 
@@ -67,7 +67,7 @@ AtomiixAudio {
 
   freeAgent{| agentName |
     this.actionAgent(agentName, {| agentName |
-      "Freeing agent: %\n".format(agentName).postln;
+      "Freeing agent: %".format(agentName).postln;
       agentDict[agentName][1].playstate = false;
       proxyspace[agentName].clear;
       agentDict[agentName] = nil;
@@ -77,7 +77,7 @@ AtomiixAudio {
 
   dozeAgent{| agentName |
     this.actionAgent(agentName, {| name |
-      "Dozing agent: %\n".format(name).postln;
+      "Dozing agent: %".format(name).postln;
       agentDict[name][1].playstate = false;
       proxyspace[name].stop;
       oscOutPort.sendMsg("/agent/state", agentName, "sleeping");
@@ -86,7 +86,7 @@ AtomiixAudio {
 
   wakeAgent{| agentName |
     this.actionAgent(agentName, {| agentName |
-      "Waking agent: %\n".format(agentName).postln;
+      "Waking agent: %".format(agentName).postln;
       agentDict[agentName][1].playstate = true;
       proxyspace[agentName].play;
       oscOutPort.sendMsg("/agent/state", agentName, "playing");
@@ -120,7 +120,7 @@ AtomiixAudio {
           });
         }.fork(TempoClock.new)
       }, {
-        "Agent % is already sleeping\n".format(agentName).postln;
+        "Agent % is already sleeping".format(agentName).postln;
       });
     });
   }
@@ -131,7 +131,7 @@ AtomiixAudio {
       if(agent[1].mode == \concrete, {
         Pdef(agentName).set(\amp, agent[1].amp);
       });
-      "Changing % amp to %\n".format(agentName, amplitude, agent[1].amp).postln;
+      "Changing % amp to %".format(agentName, amplitude, agent[1].amp).postln;
     });
   }
 
@@ -146,10 +146,10 @@ AtomiixAudio {
 
           fx = effectsDict[effect.asSymbol];
           if(fx.notNil, {
-            "Adding effect % to %\n".format(effect, agentName).postln;
+            "Adding effect % to %".format(effect, agentName).postln;
             proxyspace[agentName][agentFX.size] = \filter -> fx;
           }, {
-            "No effect named %\n".format(effect).postln;
+            "No effect named %".format(effect).postln;
           });
         });
       });
