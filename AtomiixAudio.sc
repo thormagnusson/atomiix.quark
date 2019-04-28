@@ -183,11 +183,15 @@ AtomiixAudio {
 
   createFinishingSeq{| agentName, durationArray, repeats |
     if (repeats != inf, {
-      var durations = Pseq(durationArray, repeats).asStream;
+      var events = repeats * durationArray.size;
+      var durations = Pseq(durationArray, inf).asStream;
       ^Pfunc{
-        var nd = durations.next();
-        if(nd.isNil, {this.agentFinished(agentName)});
-        nd;
+        events = events - 1;
+        if (events < 0, {
+          "agent % has finished repeats".format(agentName).postln;
+          this.agentFinished(agentName);
+          nil;
+        }, { durations.next() });
       }
     }, {
       ^Pseq(durationArray, repeats);
