@@ -22,7 +22,7 @@ AtomiixAudio {
   setAgent{| agentName |
     if(agentDict[agentName].isNil, {
       // 1st = effectRegistryDict, 2nd = scoreInfoDict, 3rd = placeholder for a routine
-      agentDict[agentName] = [(), ().add(\amp->0.5), []];
+      agentDict[agentName] = [(), ().add(\amp->0.5).add(\playstate -> false), []];
     });
     ^agentDict[agentName];
   }
