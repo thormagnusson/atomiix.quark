@@ -22,7 +22,7 @@ AtomiixAudio {
   setAgent{| agentName |
     if(agentDict[agentName].isNil, {
       // 1st = effectRegistryDict, 2nd = scoreInfoDict, 3rd = placeholder for a routine
-      agentDict[agentName] = [(), ().add(\amp->0.5), []];
+      agentDict[agentName] = [(), ().add(\amp->0.5).add(\playstate -> false), []];
     });
     ^agentDict[agentName];
   }
@@ -183,11 +183,15 @@ AtomiixAudio {
 
   createFinishingSeq{| agentName, durationArray, repeats |
     if (repeats != inf, {
-      var durations = Pseq(durationArray, repeats).asStream;
+      var events = repeats * durationArray.size;
+      var durations = Pseq(durationArray, inf).asStream;
       ^Pfunc{
-        var nd = durations.next();
-        if(nd.isNil, {this.agentFinished(agentName)});
-        nd;
+        events = events - 1;
+        if (events < 0, {
+          "agent % has finished repeats".format(agentName).postln;
+          this.agentFinished(agentName);
+          nil;
+        }, { durations.next() });
       }
     }, {
       ^Pseq(durationArray, repeats);
@@ -200,17 +204,17 @@ AtomiixAudio {
   }
 
   playPercussiveScore{| agentName, scoreInfo |
-    var pdef, agent, instruments, newInstrFlag, durationSequence, attackSequence;
+    var agent, instruments;
     ["percussive", agentName, scoreInfo].postln;
 
     agent = this.setAgent(agentName);
-    newInstrFlag = false;
-    instruments = [];
 
     // trick to free if the agent was { instr (Pmono is always on)
-    if(agent[1].mode == \concrete, { newInstrFlag = true });
+    if(agent[1].mode == \concrete, {
+      Pdef(agentName).clear;
+    });
 
-    scoreInfo.instrumentNames.collect({arg instr, i; instruments = instruments.add(instrumentDict[instr.asSymbol]) });
+    instruments = scoreInfo.instrumentNames.collect({|instr| instrumentDict[instr.asSymbol] });
 
     agent[1].mode = \percussive;
     agent[1].notes = scoreInfo.notes;
@@ -223,86 +227,42 @@ AtomiixAudio {
     agent[1].quantphase = scoreInfo.quantphase;
     agent[1].repeats = scoreInfo.repeats;
 
-    // if the agent has an empty score then return before creating the pdefs
-    if (agent[1].durations[0].isNil, {
-      "agent has no score so not running".postln;
-      ^agent
-    });
-
-    durationSequence = this.createFinishingSeq(agentName, scoreInfo.durations, scoreInfo.repeats);
-    attackSequence = this.createAttackSeq(agent, scoreInfo.attackArray);
-
-    if(proxyspace[agentName].isNeutral || (scoreInfo.repeats != inf), {
-      // needed because of repeats (free proxyspace timing)
-      proxyspace[agentName].free;
-      // oh dear. Proxyspace forces this, as one might want to put an
-      // effect again on a repeat pat
-      10.do({arg i; proxyspace[agentName][i+1] =  nil });
-      // clear the effect references
-      agent[0].clear;
-
-      pdef = Pdef(agentName, Pbind(
+    if (agent[1].durations.size > 0, {
+      Pdef(agentName, Pbind(
         \instrument, Pseq(instruments, inf), 
         \midinote, Pseq(scoreInfo.notes, inf), 
-        \dur, durationSequence,
-        \amp, attackSequence,
+        \dur, this.createFinishingSeq(agentName, scoreInfo.durations, scoreInfo.repeats),
+        \amp, this.createAttackSeq(agent, scoreInfo.attackArray),
         \sustain, Pseq(scoreInfo.sustainArray, inf),
         \pan, Pseq(scoreInfo.panArray, inf)
       ));
-
-      {
-        proxyspace[agentName].quant = [scoreInfo.durations.sum, scoreInfo.quantphase, 0, 1];
-        proxyspace[agentName].defineBus(numChannels: numChan);
-        proxyspace[agentName] = Pdef(agentName);
-        proxyspace[agentName].play;
-      }.defer(0.5);
     }, {
-      if(newInstrFlag, {
-        // only if instrument was concrete where Pmono bufferplayer synthdef needs
-        // to be shut down (similar to above, but no freeing of effects)
-
-        // needed in order to swap instrument in Pmono
-        proxyspace[agentName].free;
-
-        pdef = Pdef(agentName, Pbind(
-          \instrument, Pseq(instruments, inf), 
-          \midinote, Pseq(scoreInfo.notes, inf), 
-          \dur, durationSequence,
-          \amp, attackSequence,
-          \sustain, Pseq(scoreInfo.sustainArray, inf),
-          \pan, Pseq(scoreInfo.panArray, inf)
-        )).quant = [scoreInfo.durations.sum, scoreInfo.quantphase];
-
-        // defer needed as the free above and play immediately doesn't work
-        { proxyspace[agentName].play }.defer(0.5);
-      }, {  
-        pdef = Pdef(agentName, Pbind(
-          \instrument, Pseq(instruments, inf), 
-          \midinote, Pseq(scoreInfo.notes, inf), 
-          \dur, durationSequence,
-          \amp, attackSequence,
-          \sustain, Pseq(scoreInfo.sustainArray, inf),
-          \pan, Pseq(scoreInfo.panArray, inf)
-        )).quant = [scoreInfo.durations.sum, scoreInfo.quantphase];
-        if(agent[1].playstate == false, {
-          // this would build up synths on server on commands such as yoyo agent
-          proxyspace[agentName].play;
-        });
-      });
+      Pdef(agentName).clear;
     });
+
+    if(proxyspace[agentName][0].isNil, {
+      proxyspace[agentName].quant = [scoreInfo.durations.sum, scoreInfo.quantphase, 0, 1];
+      proxyspace[agentName][0] = Pdef(agentName);
+    },{
+      Pdef(agentName).quant = [scoreInfo.durations.sum, scoreInfo.quantphase, 0, 1];
+    });
+
+    proxyspace[agentName].play;
     agent[1].playstate = true;
     oscOutPort.sendMsg("/agent/state", agentName, "playing");
-    ^pdef;
+    agent;
   }
 
   playMelodicScore {| agentName, scoreInfo |
-    var pdef, agent, newInstrFlag, durationSequence, attackSequence;
+    var agent;
     ["melodic", agentName, scoreInfo].postln;
 
     agent = this.setAgent(agentName);
-    newInstrFlag = false;
+
     // trick to free if the agent was { instr (Pmono is always on)
-    if(agent[1].mode == \concrete, { newInstrFlag = true });
+    if(agent[1].mode == \concrete, {
+      Pdef(agentName).clear;
+    });
 
     agent[1].mode = \melodic;
     agent[1].notes = scoreInfo.notes;
@@ -314,93 +274,47 @@ AtomiixAudio {
     agent[1].quantphase = scoreInfo.quantphase;
     agent[1].repeats = scoreInfo.repeats;
 
-    // if the agent has an empty score then return before creating the pdefs
-    if (agent[1].durations[0].isNil, {
-      "agent has no score so not running".postln;
-      ^agent
-    });
-
-    durationSequence = this.createFinishingSeq(agentName, scoreInfo.durations, scoreInfo.repeats);
-    attackSequence = this.createAttackSeq(agent, scoreInfo.attackArray);
-
-    if(proxyspace[agentName].isNeutral || (scoreInfo.repeats != inf), {
-      // needed because of repeats (free proxyspace timing)
-      proxyspace[agentName].free;
-      // oh dear. Proxyspace forces this, as one might want to put an
-      // effect again on a repeat pat
-      10.do({arg i; proxyspace[agentName][i+1] =  nil });
-      // clear the effect references
-      agent[0].clear;
-
-      pdef = Pdef(agentName, Pbind(
+    if (agent[1].durations.size > 0, {
+      Pdef(agentName, Pbind(
         \instrument, scoreInfo.instrument,
         \type, \note,
         \midinote, Pseq(scoreInfo.notes, inf),
-        \dur, durationSequence,
+        \dur, this.createFinishingSeq(agentName, scoreInfo.durations, scoreInfo.repeats),
         \sustain, Pseq(scoreInfo.sustainArray, inf),
-        \amp, attackSequence,
+        \amp, this.createAttackSeq(agent, scoreInfo.attackArray),
         \pan, Pseq(scoreInfo.panArray, inf)
       ));
-
-      {
-        proxyspace[agentName].quant = [scoreInfo.durations.sum, scoreInfo.quantphase, 0, 1];
-        proxyspace[agentName].defineBus(numChannels: numChan);
-        proxyspace[agentName] = Pdef(agentName);
-        proxyspace[agentName].play;
-      }.defer(0.5);
-    },{
-      if(newInstrFlag, {
-        // only if instrument was concrete where Pmono bufferplayer synthdef needs
-        // to be shut down (similar to above, but no freeing of effects)
-
-        // needed in order to swap instrument in Pmono
-        proxyspace[agentName].free;
-
-        pdef = Pdef(agentName, Pbind(
-          \instrument, scoreInfo.instrument,
-          \midinote, Pseq(scoreInfo.notes, inf),
-          \dur, durationSequence,
-          \sustain, Pseq(scoreInfo.sustainArray, inf),
-          \amp, attackSequence,
-          \pan, Pseq(scoreInfo.panArray, inf)
-        )).quant = [scoreInfo.durations.sum, scoreInfo.quantphase, 0, 1];
-
-        proxyspace[agentName].defineBus(numChannels: numChan);
-
-        // defer needed as the free above and play immediately doesn't work
-        { proxyspace[agentName].play }.defer(0.5);
-      }, {
-        pdef = Pdef(agentName, Pbind(
-          \instrument, scoreInfo.instrument,
-          \midinote, Pseq(scoreInfo.notes, inf),
-          \dur, durationSequence,
-          \sustain, Pseq(scoreInfo.sustainArray, inf),
-          \amp, attackSequence,
-          \pan, Pseq(scoreInfo.panArray, inf)
-        )).quant = [scoreInfo.durations.sum, scoreInfo.quantphase, 0, 1];
-
-        if(agent[1].playstate == false, {
-          proxyspace[agentName].defineBus(numChannels: numChan);
-          // this would build up synths on server on commands such as yoyo agent
-          proxyspace[agentName].play;
-        });
-      });
+    }, {
+      Pdef(agentName).clear;
     });
+
+    if(proxyspace[agentName][0].isNil, {
+      proxyspace[agentName].quant = [scoreInfo.durations.sum, scoreInfo.quantphase, 0, 1];
+      proxyspace[agentName][0] = Pdef(agentName);
+    },{
+      Pdef(agentName).quant = [scoreInfo.durations.sum, scoreInfo.quantphase, 0, 1];
+    });
+
+    proxyspace[agentName].play;
     agent[1].playstate = true;
     oscOutPort.sendMsg("/agent/state", agentName, "playing");
-    ^pdef
+    agent
   }
 
   playConcreteScore{| agentName, scoreInfo|
-    var pdef, agent, newInstrFlag, durationSequence;
+    var agent;
     ["concrete", agentName, scoreInfo].postln;
 
     agent = this.setAgent(agentName);
-    newInstrFlag = false;
+
     // due to Pmono not being able to load a new instr, check
     // if it is a new one and free the old one if it is
-    if(agent[1].instrument != scoreInfo.instrument, { newInstrFlag = true });
-    if(agent[1].pitch != scoreInfo.pitch, { newInstrFlag = true });
+    if(agent[1].instrument != scoreInfo.instrument, {
+      Pdef(agentName).clear;
+    });
+    if(agent[1].pitch != scoreInfo.pitch, {
+      Pdef(agentName).clear;
+    });
 
     agent[1].mode = \concrete;
     agent[1].pitch = scoreInfo.pitch;
@@ -411,67 +325,32 @@ AtomiixAudio {
     agent[1].quantphase = scoreInfo.quantphase;
     agent[1].repeats = scoreInfo.repeats;
 
-    // if the agent has an empty score then return before creating the pdefs
-    if (agent[1].durations[0].isNil, {
-      "agent has no score so not running".postln;
-      ^agent
-    });
-
-    durationSequence = this.createFinishingSeq(agentName, scoreInfo.durations, scoreInfo.repeats);
-
-    if(proxyspace[agentName].isNeutral || (scoreInfo.repeats != inf), {
-      // needed because of repeats (free proxyspace timing)
-      proxyspace[agentName].free;
-      // oh dear. Proxyspace forces this, as one might want to put an
-      // effect again on a repeat pat
-      10.do({arg i; proxyspace[agentName][i+1] =  nil });
-
-      // clear the effect references
-      agentDict[agentName][0].clear;
-
-      // Only make one of these sequences a Finishing Sequence
-      // so we only get one alert
-      Pdefn((agentName++"durations").asSymbol, durationSequence);
-      Pdefn((agentName++"amplitudes").asSymbol, Pseq(scoreInfo.amplitudes, scoreInfo.repeats));
-      pdef = Pdef(agentName, Pmono(scoreInfo.instrument,
-            \dur, Pdefn((agentName++"durations").asSymbol),
+    if (agent[1].durations.size > 0, {
+      Pdef(agentName, Pmono(scoreInfo.instrument,
+            \dur, this.createFinishingSeq(
+                agentName, scoreInfo.durations, scoreInfo.repeats),
             \freq, scoreInfo.pitch.midicps,
-            \noteamp, Pdefn((agentName++"amplitudes").asSymbol),
+            \noteamp, Pseq(scoreInfo.amplitudes, scoreInfo.repeats),
             \pan, Pseq(scoreInfo.panArray, inf)
       ));
-      {
-        proxyspace[agentName].quant = [scoreInfo.durations.sum, scoreInfo.quantphase, 0, 1];
-        proxyspace[agentName].defineBus(numChannels: numChan);
-        proxyspace[agentName] = Pdef(agentName);
-        proxyspace[agentName].play
-      }.defer(0.5);
     }, {
-      // Only make one of these sequences a Finishing Sequence
-      // so we only get one alert
-      Pdefn((agentName++"durations").asSymbol, durationSequence).quant = [scoreInfo.durations.sum, scoreInfo.quantphase, 0, 1];
-      Pdefn((agentName++"amplitudes").asSymbol, Pseq(scoreInfo.amplitudes, scoreInfo.repeats)).quant = [scoreInfo.durations.sum, scoreInfo.quantphase, 0, 1];
-      if(newInstrFlag, {
-        // needed in order to swap instrument in Pmono
-        proxyspace[agentName].free;
-        pdef = Pdef(agentName, Pmono(scoreInfo.instrument,
-              \dur, Pdefn((agentName++"durations").asSymbol),
-              \freq, scoreInfo.pitch.midicps,
-              \noteamp, Pdefn((agentName++"amplitudes").asSymbol),
-              \pan, Pseq(scoreInfo.panArray, inf)
-        ));
-        // defer needed as the free above and play immediately doesn't work
-        {
-          proxyspace[agentName].defineBus(numChannels: numChan);
-          proxyspace[agentName] = Pdef(agentName);
-          proxyspace[agentName].play
-        }.defer(0.5);
-      });
+      Pdef(agentName).clear;
     });
+
+
+    if(proxyspace[agentName][0].isNil, {
+      proxyspace[agentName].quant = [scoreInfo.durations.sum, scoreInfo.quantphase, 0, 1];
+      proxyspace[agentName][0] = Pdef(agentName);
+    },{
+      Pdef(agentName).quant = [scoreInfo.durations.sum, scoreInfo.quantphase, 0, 1];
+    });
+
     // proxyspace quirk: amp set from outside
     Pdef(agentName).set(\amp, agent[1].amp);
+
+    proxyspace[agentName].play;
     agent[1].playstate = true;
     oscOutPort.sendMsg("/agent/state", agentName, "playing");
-    ^pdef;
+    agent
   }
-
 }
