@@ -38,13 +38,13 @@ AtomiixInstruments {
       ].do({arg letter, i;
         instrDict[letter] = sampleNames.wrapAt(i).asSymbol;
       });
-      "No key mappings were found, so samples will be randomly assigned to keys".postln;
+      Atomiix.log("No key mappings were found, so samples will be randomly assigned to keys");
     });
 
-    "The keys of your keyboard are mapped to the following samples :".postln;
+    Atomiix.log("The keys of your keyboard are mapped to the following samples :");
     Post << this.getSamplesSynthdefs(instrDict);
     if(sampleNames.size == 0, {
-      "There were no samples in your samples folder, please put some there!".postln;
+      Atomiix.error("There were no samples in your samples folder, please put some there!");
     });
     ^instrDict;
   }
@@ -73,9 +73,9 @@ AtomiixInstruments {
     var string, sortedkeys, sortedvals;
     sortedkeys = instrDict.keys.asArray.sort;
     sortedvals = instrDict.atAll(instrDict.order);
-    string = " ";
+    string = "";
     sortedkeys.do({arg item, i;
-      string = string++item++"  :  "++sortedvals[i]++"\n"++" ";
+      string = string ++ " " ++ item ++ "  :  " ++ sortedvals[i] ++ "\n";
     });
     ^string;
   }
@@ -90,7 +90,7 @@ AtomiixInstruments {
     // here in order to free buffers when doc is closed
     bufferPool = [];
 
-    "Loading samples".postln;
+    Atomiix.log("Loading samples");
 
     // ---------------------- sample based instruments ---------------------
     sampleFolder = (projectPath++"/samples/*");
@@ -98,10 +98,7 @@ AtomiixInstruments {
     sampleNames = samplePaths.collect({ |path| path.basename.splitext[0]});
 
     if(samplePaths == [], {
-      "-------------------------- NOTE ---------------------------".postln;
-      "ixi lang : No samples were found to map to the keys. You need to put samples into the 'samples' folder of your project. (Default project is called 'default', but create your own project by creating a new folder next to the 'default'folder. \nSee the XiiLang.html help file".postln;
-      "------------------------------------------------------------".postln;
-
+      Atomiix.error("No samples found");
     }, {
 
       // there might be more samples in the folder than the 52
@@ -150,7 +147,7 @@ AtomiixInstruments {
   makeSynthDefs {
 
     // ---------------------- synthesized instruments -----------------------------
-    "Loading default synths".postln;
+    Atomiix.log("Loading default synths");
 
     SynthDef(\impulse, { arg out=0, gate=1, pan=0, amp=1;
       var x, imp, killenv;

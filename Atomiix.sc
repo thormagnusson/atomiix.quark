@@ -2,23 +2,28 @@
 
 Atomiix {
 
-  var instruments, audioEngine;
+  var instruments;
+  var audioEngine;
   var listenerPool;
+  classvar debuggingOn;
 
-  *setup {| oscPort, oscDestination |
-    "Waiting for startup message".postln;
+  *setup {| oscPort, oscDestination, debug = false |
+    Atomiix.log("Waiting for startup message");
+
+    debuggingOn = debug;
+    Atomiix.debug("Debugging is on");
 
     OSCFunc({| msg |
       var projectPath = msg[1];
       if (~atomiix.notNil, { ~atomiix.free; });
-      "Project path is %".format(projectPath).postln;
+      Atomiix.log("Project path is %".format(projectPath));
       ~atomiix = Atomiix.new.init(projectPath, oscPort, oscDestination);
     }, '/setup', NetAddr("localhost"), oscPort);
   }
 
   init {| projectPath, oscInPort, oscOutPort, oscOutHost = "127.0.0.1" |
     var outPort;
-    "Booting Atomiix...".postln;
+    Atomiix.log("Booting...");
 
     outPort = NetAddr.new(oscOutHost, oscOutPort);
 
@@ -32,13 +37,13 @@ Atomiix {
   }
 
   free {
-    "Cleaning up Engine".postln;
+    Atomiix.log("Cleaning up Engine");
     listenerPool.do({arg oscListener; oscListener.free});
     audioEngine.free();
   }
 
   setupOSC {| oscPort |
-    "Setting up OSC listeners".postln;
+    Atomiix.log("Setting up OSC listeners");
     listenerPool = [];
 
     listenerPool = listenerPool.add(
@@ -49,7 +54,7 @@ Atomiix {
           \percussive, { this.playPercussiveScore(values[2..]) },
           \melodic, { this.playMelodicScore(values[2..]) },
           \concrete, { this.playConcreteScore(values[2..]) },
-          { "unknown score type: %\n".format(scoreType).postln }
+          { Atomiix.error("Unknown score type: %".format(scoreType)) }
         )
       }, '/play/pattern', NetAddr("localhost"), oscPort)
     );
@@ -71,7 +76,6 @@ Atomiix {
 
     listenerPool = listenerPool.add(
       OSCFunc({| msg |
-        msg.postln;
         audioEngine.changeTempo(msg[1], msg[2]);
       }, '/tempo', NetAddr("localhost"), oscPort)
     );
@@ -116,7 +120,7 @@ Atomiix {
       }, '/callback', NetAddr("localhost"), oscPort)
     );
 
-    "Atomiix-SC: Listening on port %\n".format(oscPort).postln;
+    Atomiix.log("Listening on port %".format(oscPort));
   }
 
   playPercussiveScore {| scoreData |
@@ -161,6 +165,20 @@ Atomiix {
     args.quantphase = scoreData[6];
     args.repeats = scoreData[7];
     audioEngine.playConcreteScore(agentName, args);
+  }
+
+  *log { |message|
+    "Atomiix ->  %".format(message).postln;
+  }
+
+  *debug { |message|
+    if (debuggingOn, {
+      "DEBUG   ->  %".format(message).postln;
+    });
+  }
+
+  *error { |message|
+    "Error!  ->  %".format(message).postln;
   }
 
 }

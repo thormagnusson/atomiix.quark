@@ -16,13 +16,13 @@ AtomiixAudio {
     instrumentDict = instrDict;
     effectsDict = fxDict;
     oscOutPort = outPort;
-    numChan = numChannels
+    numChan = numChannels;
   }
 
   setAgent{| agentName |
     if(agentDict[agentName].isNil, {
-      // 1st = effectRegistryDict, 2nd = scoreInfoDict, 3rd = placeholder for a routine
-      agentDict[agentName] = [(), ().add(\amp->0.5).add(\playstate -> false), []];
+      // 1st = effectRegistryDict, 2nd = scoreInfoDict
+      agentDict[agentName] = [(), ().add(\amp->0.5).add(\playstate -> false)];
     });
     ^agentDict[agentName];
   }
@@ -31,7 +31,7 @@ AtomiixAudio {
     if (agentDict[agentName].notNil, {
       action.value(agentName, agentDict[agentName]);
     }, {
-      "No agent named %".format(agentName).postln;
+      Atomiix.error("No agent named %".format(agentName));
     });
   }
 
@@ -44,7 +44,7 @@ AtomiixAudio {
           time.wait;
         });
         {
-          "calling callback %".format(callbackID).postln;
+          Atomiix.debug("Triggering callback %".format(callbackID));
           this.actionCallback(callbackID, (repeats - 1) - num);
         }.defer;
       });
@@ -56,18 +56,17 @@ AtomiixAudio {
   }
 
   changeTempo{| newTempo, glide |
-    [newTempo, glide].postln;
     if(glide.notNil, {
       TempoClock.default.sync(newTempo/60, glide);
     }, {
       TempoClock.default.tempo = newTempo/60;
     });
-    "---> Setting tempo to %".format(newTempo).postln;
+    Atomiix.log("Setting tempo to %".format(newTempo));
   }
 
   freeAgent{| agentName |
     this.actionAgent(agentName, {| agentName |
-      "Freeing agent: %".format(agentName).postln;
+      Atomiix.log("Freeing agent %".format(agentName));
       agentDict[agentName][1].playstate = false;
       proxyspace[agentName].clear;
       agentDict[agentName] = nil;
@@ -77,7 +76,7 @@ AtomiixAudio {
 
   dozeAgent{| agentName |
     this.actionAgent(agentName, {| name |
-      "Dozing agent: %".format(name).postln;
+      Atomiix.log("Dozing agent %".format(name));
       agentDict[name][1].playstate = false;
       proxyspace[name].stop;
       oscOutPort.sendMsg("/agent/state", agentName, "sleeping");
@@ -86,7 +85,7 @@ AtomiixAudio {
 
   wakeAgent{| agentName |
     this.actionAgent(agentName, {| agentName |
-      "Waking agent: %".format(agentName).postln;
+      Atomiix.log("Waking agent %".format(agentName));
       agentDict[agentName][1].playstate = true;
       proxyspace[agentName].play;
       oscOutPort.sendMsg("/agent/state", agentName, "playing");
@@ -102,7 +101,6 @@ AtomiixAudio {
     }, {
       time;
     });
-    [agentName, time, timeType, repeats, napDuration].postln;
     this.actionAgent(agentName, {| agentName, agent |
       if (agentDict[agentName][1].playstate, {
         {
@@ -110,17 +108,19 @@ AtomiixAudio {
             if (agentDict[agentName][1].playstate, {
               proxyspace[agentName].objects[0].array[0].mute;
               agentDict[agentName][1].playstate = false;
+              Atomiix.log("Dozing agent %".format(agentName));
               oscOutPort.sendMsg("/agent/state", agentName, "sleeping");
             }, {
               proxyspace[agentName].objects[0].array[0].unmute;
               agentDict[agentName][1].playstate = true;
+              Atomiix.log("Waking agent %".format(agentName));
               oscOutPort.sendMsg("/agent/state", agentName, "playing");
             });
             napDuration.wait;
           });
         }.fork(TempoClock.new)
       }, {
-        "Agent % is already sleeping".format(agentName).postln;
+        Atomiix.error("Agent % is already sleeping".format(agentName));
       });
     });
   }
@@ -131,7 +131,7 @@ AtomiixAudio {
       if(agent[1].mode == \concrete, {
         Pdef(agentName).set(\amp, agent[1].amp);
       });
-      "Changing % amp to %".format(agentName, amplitude, agent[1].amp).postln;
+      Atomiix.log("Changing % amplitude to %".format(agentName, agent[1].amp));
     });
   }
 
@@ -146,10 +146,10 @@ AtomiixAudio {
 
           fx = effectsDict[effect.asSymbol];
           if(fx.notNil, {
-            "Adding effect % to %".format(effect, agentName).postln;
+            Atomiix.log("Adding effect % to %".format(effect, agentName));
             proxyspace[agentName][agentFX.size] = \filter -> fx;
           }, {
-            "No effect named %".format(effect).postln;
+            Atomiix.log("No effect named %".format(effect));
           });
         });
       });
@@ -168,6 +168,7 @@ AtomiixAudio {
         effects.do({|effect|
           if (agentFX[effect.asSymbol].notNil, {
             // TODO should this handle the gaps it creates?
+            Atomiix.log("Removing effect % from %".format(effect, agentName));
             proxyspace[agentName][(agentFX[effect.asSymbol]).clip(1,10)] =  nil;
             agentFX.removeAt(effect.asSymbol);
           });
@@ -177,7 +178,7 @@ AtomiixAudio {
   }
 
   agentFinished{| agentName |
-    "Agent % has finished playing".format(agentName).postln;
+    Atomiix.log("Agent % has finished playing".format(agentName));
     oscOutPort.sendMsg("/finished", agentName);
   }
 
@@ -188,7 +189,7 @@ AtomiixAudio {
       ^Pfunc{
         events = events - 1;
         if (events < 0, {
-          "agent % has finished repeats".format(agentName).postln;
+          Atomiix.debug("Agent % has finished repeats".format(agentName));
           this.agentFinished(agentName);
           nil;
         }, { durations.next() });
@@ -205,9 +206,10 @@ AtomiixAudio {
 
   playPercussiveScore{| agentName, scoreInfo |
     var agent, instruments;
-    ["percussive", agentName, scoreInfo].postln;
 
     agent = this.setAgent(agentName);
+
+    Atomiix.log("Playing percussive score on agent %".format(agentName));
 
     // trick to free if the agent was { instr (Pmono is always on)
     if(agent[1].mode == \concrete, {
@@ -255,9 +257,10 @@ AtomiixAudio {
 
   playMelodicScore {| agentName, scoreInfo |
     var agent;
-    ["melodic", agentName, scoreInfo].postln;
 
     agent = this.setAgent(agentName);
+
+    Atomiix.log("Playing melodic score on agent %".format(agentName));
 
     // trick to free if the agent was { instr (Pmono is always on)
     if(agent[1].mode == \concrete, {
@@ -303,9 +306,10 @@ AtomiixAudio {
 
   playConcreteScore{| agentName, scoreInfo|
     var agent;
-    ["concrete", agentName, scoreInfo].postln;
 
     agent = this.setAgent(agentName);
+
+    Atomiix.log("Playing concrete score on agent %".format(agentName));
 
     // due to Pmono not being able to load a new instr, check
     // if it is a new one and free the old one if it is
