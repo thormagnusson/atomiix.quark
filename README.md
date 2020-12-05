@@ -9,6 +9,7 @@ Should be simple to install as this is built as a SuperCollider [Quart](http://d
 
 `Quarks.install("https://github.com/rumblesan/atomiix.quark.git");`
 
+Does require [SC3 Plugins](https://github.com/supercollider/sc3-plugins), so if you don't have that installed you'll need to.
 
 ## OSC Messages
 
@@ -30,4 +31,3 @@ Drop me an email at guy@rumblesan.com
 ## License
 
 BSD License.
-
