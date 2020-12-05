@@ -135,6 +135,7 @@ Atomiix {
     args.panArray = scoreData[6];
     args.quantphase = scoreData[7];
     args.repeats = scoreData[8];
+    args.sampleBank = scoreData[9];
     audioEngine.playPercussiveScore(agentName, args);
   }
 
