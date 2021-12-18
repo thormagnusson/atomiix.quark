@@ -63,6 +63,10 @@ AtomiixAudio {
     });
     Atomiix.log("Setting tempo to %".format(newTempo));
   }
+  
+  cmdPeriod {
+    CmdPeriod.hardRun;
+  }
 
   freeAgent{| agentName |
     this.actionAgent(agentName, {| agentName |
